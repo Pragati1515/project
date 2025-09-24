@@ -1,0 +1,136 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import nltk, string, spacy
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from textblob import TextBlob
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+
+# ============================
+# 🔹 Download required resources (IMPORTANT for Streamlit Cloud)
+# ============================
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    from spacy.cli import download
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
+# ============================
+# Phase Preprocessing
+# ============================
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words('english'))
+pragmatic_words = ["must", "should", "might", "could", "will", "?", "!"]
+
+def lexical_preprocess(text):
+    tokens = nltk.word_tokenize(text.lower())
+    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words and w not in string.punctuation]
+    return " ".join(tokens)
+
+def syntactic_features(text):
+    doc = nlp(text)
+    return " ".join([token.pos_ for token in doc])
+
+def semantic_features(text):
+    blob = TextBlob(text)
+    return f"{blob.sentiment.polarity} {blob.sentiment.subjectivity}"
+
+def discourse_features(text):
+    sentences = nltk.sent_tokenize(text)
+    return f"{len(sentences)} {' '.join([s.split()[0] for s in sentences if len(s.split())>0])}"
+
+def pragmatic_features(text):
+    tokens = []
+    for w in pragmatic_words:
+        count = text.lower().count(w)
+        tokens.extend([w] * count)
+    return " ".join(tokens)
+
+# ============================
+# Helper: Train Multiple Models
+# ============================
+def train_models(X_features, y, phase_name):
+    results = {}
+    X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
+
+    models = {
+        "Naive Bayes": MultinomialNB(),
+        "SVM": SVC(kernel="linear"),
+        "Logistic Regression": LogisticRegression(max_iter=1000),
+        "Decision Tree": DecisionTreeClassifier(),
+        "KNN": KNeighborsClassifier()
+    }
+
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        acc = accuracy_score(y_test, y_pred)
+        results[name] = acc
+    return results
+
+# ============================
+# Streamlit UI
+# ============================
+st.title("📰 Fake vs Real Detection - NLP Phase-wise with ML Models")
+
+uploaded_file = st.file_uploader("Upload your CSV file (must have 'Statement' & 'BinaryTarget')", type=["csv"])
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("### Dataset Preview", df.head())
+
+    # Let user pick which columns to use
+    st.write("### Select Columns for Analysis")
+    text_col = st.selectbox("Select the text column (contains sentences/reviews/statements)", df.columns)
+    label_col = st.selectbox("Select the target column (contains labels like FAKE/REAL, 0/1, etc.)", df.columns)
+
+    X = df[text_col]
+    y = df[label_col]
+
+    # Phase transformations
+    st.write("### Running Phase-wise Analysis...")
+
+    phases = {
+        "Lexical & Morphological": (X.apply(lexical_preprocess), CountVectorizer()),
+        "Syntactic": (X.apply(syntactic_features), CountVectorizer()),
+        "Semantic": (X.apply(semantic_features), TfidfVectorizer()),
+        "Discourse": (X.apply(discourse_features), CountVectorizer()),
+        "Pragmatic": (X.apply(pragmatic_features), CountVectorizer())
+    }
+
+    all_results = {}
+
+    for phase, (X_phase, vectorizer) in phases.items():
+        vec = vectorizer.fit_transform(X_phase)
+        res = train_models(vec, y, phase)
+        all_results[phase] = res
+
+    # Show Results
+    st.write("### 📊 Phase-wise Accuracies")
+    results_df = pd.DataFrame(all_results).T
+    st.dataframe(results_df.style.format("{:.4f}"))
+
+    # Plot
+    st.write("### 🔎 Accuracy Comparison")
+    results_df.plot(kind="bar", figsize=(10,6))
+    plt.ylabel("Accuracy")
+    plt.title("Model Accuracies per NLP Phase")
+    plt.xticks(rotation=30)
+    st.pyplot(plt.gcf())
+
+
