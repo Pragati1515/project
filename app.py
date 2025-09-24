@@ -1,11 +1,16 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import nltk, string, spacy
+import nltk, string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from textblob import TextBlob
 import matplotlib.pyplot as plt
+
+import nltk
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger') 
+# needed for POS tagging
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -23,12 +28,6 @@ nltk.download('punkt')
 nltk.download('wordnet')
 nltk.download('stopwords')
 
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    from spacy.cli import download
-    download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
 
 # ============================
 # Phase Preprocessing
@@ -42,9 +41,12 @@ def lexical_preprocess(text):
     tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words and w not in string.punctuation]
     return " ".join(tokens)
 
+
 def syntactic_features(text):
-    doc = nlp(text)
-    return " ".join([token.pos_ for token in doc])
+    tokens = nltk.word_tokenize(text)
+    pos_tags = nltk.pos_tag(tokens)
+    return " ".join([tag for word, tag in pos_tags])
+
 
 def semantic_features(text):
     blob = TextBlob(text)
@@ -132,5 +134,6 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
 
 
