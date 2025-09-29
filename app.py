@@ -7,11 +7,20 @@ from nltk.stem import WordNetLemmatizer
 from textblob import TextBlob
 import matplotlib.pyplot as plt
 
+
 import nltk
+
 nltk.download('punkt')
-nltk.download('punkt_tab')
-nltk.download('averaged_perceptron_tagger') 
-# needed for POS tagging
+nltk.download('punkt_tab')   # optional, you may not need this
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+# POS tagging (new name in recent NLTK versions)
+try:
+    nltk.download('averaged_perceptron_tagger_eng')
+except:
+    nltk.download('averaged_perceptron_tagger')
+
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -136,6 +145,7 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
 
 
 
