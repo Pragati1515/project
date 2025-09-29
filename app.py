@@ -45,17 +45,29 @@ lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
 pragmatic_words = ["must", "should", "might", "could", "will", "?", "!"]
 
+from nltk.tokenize import word_tokenize, sent_tokenize
+
 def lexical_preprocess(text):
     text = str(text)
-    tokens = nltk.word_tokenize(text.lower())
-    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words and w not in string.punctuation]
+    # force standard punkt
+    try:
+        tokens = word_tokenize(text)
+    except LookupError:
+        nltk.download('punkt')
+        tokens = word_tokenize(text)
+    tokens = [lemmatizer.lemmatize(w.lower()) for w in tokens if w.lower() not in stop_words and w not in string.punctuation]
     return " ".join(tokens)
 
 def syntactic_features(text):
     text = str(text)
-    tokens = nltk.word_tokenize(text)
+    try:
+        tokens = word_tokenize(text)
+    except LookupError:
+        nltk.download('punkt')
+        tokens = word_tokenize(text)
     pos_tags = nltk.pos_tag(tokens)
     return " ".join([tag for word, tag in pos_tags])
+
 
 def semantic_features(text):
     text = str(text)
@@ -143,3 +155,4 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
