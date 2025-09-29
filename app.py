@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 
 import nltk
 
-nltk.download('punkt')
-nltk.download('punkt_tab')   # optional, you may not need this
+nltk.download('punkt')   # optional, you may not need this
 nltk.download('wordnet')
 nltk.download('stopwords')
 
@@ -34,9 +33,9 @@ from sklearn.metrics import accuracy_score
 # ============================
 # 🔹 Download required resources (IMPORTANT for Streamlit Cloud)
 # ============================
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('stopwords')
+nltk.download('punkt',quiet=True)
+nltk.download('wordnet',quiet=True)
+nltk.download('stopwords',quiet=True)
 
 
 # ============================
@@ -145,3 +144,5 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+    plt.clf()
+
