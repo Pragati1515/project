@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 import nltk
 nltk.download('punkt')
+nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger') 
 # needed for POS tagging
 
@@ -134,6 +135,7 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
 
 
 
