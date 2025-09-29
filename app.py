@@ -20,13 +20,10 @@ from sklearn.metrics import accuracy_score
 # ============================
 # 🔹 Safe NLTK Downloads
 # ============================
+import nltk
+
 def download_nltk_resources():
-    resources = [
-        "punkt",
-        "wordnet",
-        "stopwords",
-        "averaged_perceptron_tagger"
-    ]
+    resources = ["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"]
     for res in resources:
         try:
             nltk.data.find(res)
@@ -34,6 +31,7 @@ def download_nltk_resources():
             nltk.download(res)
 
 download_nltk_resources()
+
 
 # ============================
 # 🔹 Preprocessing Setup
@@ -145,3 +143,4 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
