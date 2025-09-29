@@ -4,7 +4,6 @@ import numpy as np
 import string
 import re
 from textblob import TextBlob
-from nltk.stem import WordNetLemmatizer
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -16,10 +15,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
-# ============================
-# Phase Preprocessing
-# ============================
-lemmatizer = WordNetLemmatizer()
+# ----------------------------
+# Stop words & pragmatic words
+# ----------------------------
 stop_words = set([
     'i','me','my','myself','we','our','ours','ourselves','you','your','yours',
     'yourself','yourselves','he','him','his','himself','she','her','hers','herself',
@@ -37,12 +35,12 @@ stop_words = set([
 pragmatic_words = ["must", "should", "might", "could", "will", "?", "!"]
 
 # ----------------------------
-# Lexical Preprocessing (regex-based)
+# Lexical preprocessing without NLTK
 # ----------------------------
 def lexical_preprocess(text):
     text = str(text).lower()
-    tokens = re.findall(r'\b\w+\b', text)  # simple word tokenizer
-    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words]
+    tokens = re.findall(r'\b\w+\b', text)  # simple regex tokenizer
+    tokens = [w for w in tokens if w not in stop_words]  # remove stopwords
     return " ".join(tokens)
 
 # ----------------------------
@@ -79,10 +77,10 @@ def pragmatic_features(text):
         tokens.extend([w]*count)
     return " ".join(tokens)
 
-# ============================
+# ----------------------------
 # Train multiple ML models
-# ============================
-def train_models(X_features, y, phase_name):
+# ----------------------------
+def train_models(X_features, y):
     results = {}
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
 
@@ -101,9 +99,9 @@ def train_models(X_features, y, phase_name):
         results[name] = acc
     return results
 
-# ============================
+# ----------------------------
 # Streamlit UI
-# ============================
+# ----------------------------
 st.title("📰 Fake vs Real Detection - NLP Phase-wise with ML Models")
 
 uploaded_file = st.file_uploader("Upload your CSV file (must have 'Statement' & 'BinaryTarget')", type=["csv"])
@@ -133,7 +131,7 @@ if uploaded_file is not None:
 
     for phase, (X_phase, vectorizer) in phases.items():
         vec = vectorizer.fit_transform(X_phase)
-        res = train_models(vec, y, phase)
+        res = train_models(vec, y)
         all_results[phase] = res
 
     st.write("### 📊 Phase-wise Accuracies")
