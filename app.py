@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import string
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+import re
 from textblob import TextBlob
+from nltk.stem import WordNetLemmatizer
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
@@ -18,79 +17,72 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
 # ============================
-# 🔹 Safe NLTK Downloads (No punkt_tab)
-# ============================
-def download_nltk_resources():
-    resources = [
-        "punkt",  # tokenizer
-        "wordnet",
-        "stopwords",
-        "averaged_perceptron_tagger"
-    ]
-    for res in resources:
-        try:
-            if res == "punkt":
-                nltk.data.find(f"tokenizers/{res}")
-            else:
-                nltk.data.find(res)
-        except LookupError:
-            nltk.download(res)
-
-download_nltk_resources()
-
-# ============================
-# 🔹 Preprocessing
+# Phase Preprocessing
 # ============================
 lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words('english'))
+stop_words = set([
+    'i','me','my','myself','we','our','ours','ourselves','you','your','yours',
+    'yourself','yourselves','he','him','his','himself','she','her','hers','herself',
+    'it','its','itself','they','them','their','theirs','themselves','what','which',
+    'who','whom','this','that','these','those','am','is','are','was','were','be',
+    'been','being','have','has','had','having','do','does','did','doing','a','an',
+    'the','and','but','if','or','because','as','until','while','of','at','by','for',
+    'with','about','against','between','into','through','during','before','after',
+    'above','below','to','from','up','down','in','out','on','off','over','under',
+    'again','further','then','once','here','there','when','where','why','how','all',
+    'any','both','each','few','more','most','other','some','such','no','nor','not',
+    'only','own','same','so','than','too','very','s','t','can','will','just','don',
+    'should','now'
+])
 pragmatic_words = ["must", "should", "might", "could", "will", "?", "!"]
 
-from nltk.tokenize import word_tokenize, sent_tokenize
-
+# ----------------------------
+# Lexical Preprocessing (regex-based)
+# ----------------------------
 def lexical_preprocess(text):
-    text = str(text)
-    # force standard punkt
-    try:
-        tokens = word_tokenize(text)
-    except LookupError:
-        nltk.download('punkt')
-        tokens = word_tokenize(text)
-    tokens = [lemmatizer.lemmatize(w.lower()) for w in tokens if w.lower() not in stop_words and w not in string.punctuation]
+    text = str(text).lower()
+    tokens = re.findall(r'\b\w+\b', text)  # simple word tokenizer
+    tokens = [lemmatizer.lemmatize(w) for w in tokens if w not in stop_words]
     return " ".join(tokens)
 
+# ----------------------------
+# Syntactic Features (TextBlob POS)
+# ----------------------------
 def syntactic_features(text):
     text = str(text)
-    try:
-        tokens = word_tokenize(text)
-    except LookupError:
-        nltk.download('punkt')
-        tokens = word_tokenize(text)
-    pos_tags = nltk.pos_tag(tokens)
-    return " ".join([tag for word, tag in pos_tags])
-
-
-def semantic_features(text):
-    text = str(text)
     blob = TextBlob(text)
+    return " ".join([tag for word, tag in blob.tags])
+
+# ----------------------------
+# Semantic Features
+# ----------------------------
+def semantic_features(text):
+    blob = TextBlob(str(text))
     return f"{blob.sentiment.polarity} {blob.sentiment.subjectivity}"
 
+# ----------------------------
+# Discourse Features
+# ----------------------------
 def discourse_features(text):
-    text = str(text)
-    sentences = nltk.sent_tokenize(text)
+    sentences = re.split(r'[.!?]+', str(text))
+    sentences = [s for s in sentences if s.strip()]
     return f"{len(sentences)} {' '.join([s.split()[0] for s in sentences if len(s.split())>0])}"
 
+# ----------------------------
+# Pragmatic Features
+# ----------------------------
 def pragmatic_features(text):
-    text = str(text)
     tokens = []
+    text_lower = str(text).lower()
     for w in pragmatic_words:
-        count = text.lower().count(w)
-        tokens.extend([w] * count)
+        count = text_lower.count(w)
+        tokens.extend([w]*count)
     return " ".join(tokens)
 
 # ============================
-# 🔹 Train Multiple Models
+# Train multiple ML models
 # ============================
-def train_models(X_features, y):
+def train_models(X_features, y, phase_name):
     results = {}
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
 
@@ -110,7 +102,7 @@ def train_models(X_features, y):
     return results
 
 # ============================
-# 🔹 Streamlit UI
+# Streamlit UI
 # ============================
 st.title("📰 Fake vs Real Detection - NLP Phase-wise with ML Models")
 
@@ -121,11 +113,11 @@ if uploaded_file is not None:
     st.write("### Dataset Preview", df.head())
 
     st.write("### Select Columns for Analysis")
-    text_col = st.selectbox("Select the text column", df.columns)
-    label_col = st.selectbox("Select the target column", df.columns)
+    text_col = st.selectbox("Text column", df.columns)
+    label_col = st.selectbox("Target column", df.columns)
 
     X = df[text_col].fillna("").astype(str)
-    y = df[label_col].astype(str)
+    y = df[label_col]
 
     st.write("### Running Phase-wise Analysis...")
 
@@ -141,7 +133,7 @@ if uploaded_file is not None:
 
     for phase, (X_phase, vectorizer) in phases.items():
         vec = vectorizer.fit_transform(X_phase)
-        res = train_models(vec, y)
+        res = train_models(vec, y, phase)
         all_results[phase] = res
 
     st.write("### 📊 Phase-wise Accuracies")
@@ -149,10 +141,8 @@ if uploaded_file is not None:
     st.dataframe(results_df.style.format("{:.4f}"))
 
     st.write("### 🔎 Accuracy Comparison")
-    plt.figure(figsize=(10,6))
     results_df.plot(kind="bar", figsize=(10,6))
     plt.ylabel("Accuracy")
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
-
