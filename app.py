@@ -18,23 +18,28 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
 # ============================
-# 🔹 Safe NLTK Downloads
+# 🔹 Safe NLTK Downloads (No punkt_tab)
 # ============================
-import nltk
-
 def download_nltk_resources():
-    resources = ["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"]
+    resources = [
+        "punkt",  # tokenizer
+        "wordnet",
+        "stopwords",
+        "averaged_perceptron_tagger"
+    ]
     for res in resources:
         try:
-            nltk.data.find(res)
+            if res == "punkt":
+                nltk.data.find(f"tokenizers/{res}")
+            else:
+                nltk.data.find(res)
         except LookupError:
             nltk.download(res)
 
 download_nltk_resources()
 
-
 # ============================
-# 🔹 Preprocessing Setup
+# 🔹 Preprocessing
 # ============================
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
@@ -71,7 +76,7 @@ def pragmatic_features(text):
     return " ".join(tokens)
 
 # ============================
-# 🔹 Helper: Train Multiple Models
+# 🔹 Train Multiple Models
 # ============================
 def train_models(X_features, y):
     results = {}
@@ -103,16 +108,13 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.write("### Dataset Preview", df.head())
 
-    # Let user pick which columns to use
     st.write("### Select Columns for Analysis")
-    text_col = st.selectbox("Select the text column (contains sentences/reviews/statements)", df.columns)
-    label_col = st.selectbox("Select the target column (contains labels like FAKE/REAL, 0/1, etc.)", df.columns)
+    text_col = st.selectbox("Select the text column", df.columns)
+    label_col = st.selectbox("Select the target column", df.columns)
 
-    # Ensure text and target are strings
     X = df[text_col].fillna("").astype(str)
     y = df[label_col].astype(str)
 
-    # Phase transformations
     st.write("### Running Phase-wise Analysis...")
 
     phases = {
@@ -130,12 +132,10 @@ if uploaded_file is not None:
         res = train_models(vec, y)
         all_results[phase] = res
 
-    # Show Results
     st.write("### 📊 Phase-wise Accuracies")
     results_df = pd.DataFrame(all_results).T
     st.dataframe(results_df.style.format("{:.4f}"))
 
-    # Plot
     st.write("### 🔎 Accuracy Comparison")
     plt.figure(figsize=(10,6))
     results_df.plot(kind="bar", figsize=(10,6))
@@ -143,4 +143,3 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
-
