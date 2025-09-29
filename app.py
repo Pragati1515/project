@@ -102,8 +102,9 @@ if uploaded_file is not None:
     text_col = st.selectbox("Select the text column (contains sentences/reviews/statements)", df.columns)
     label_col = st.selectbox("Select the target column (contains labels like FAKE/REAL, 0/1, etc.)", df.columns)
 
-    X = df[text_col]
+    X = df[text_col].fillna("").astype(str)
     y = df[label_col]
+
 
     # Phase transformations
     st.write("### Running Phase-wise Analysis...")
@@ -135,6 +136,7 @@ if uploaded_file is not None:
     plt.title("Model Accuracies per NLP Phase")
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
+
 
 
 
