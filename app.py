@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import nltk, string
+import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from textblob import TextBlob
@@ -13,12 +13,16 @@ import nltk
 nltk.download('punkt')   # optional, you may not need this
 nltk.download('wordnet')
 nltk.download('stopwords')
-
-# POS tagging (new name in recent NLTK versions)
+nltk.download('punkt_tab')
+# POS tagging (compatibility with new & old NLTK versions)
 try:
-    nltk.download('averaged_perceptron_tagger_eng')
-except:
-    nltk.download('averaged_perceptron_tagger')
+    nltk.data.find("taggers/averaged_perceptron_tagger_eng")
+except LookupError:
+    try:
+        nltk.download("averaged_perceptron_tagger_eng")
+    except:
+        nltk.download("averaged_perceptron_tagger")
+
 
 
 from sklearn.model_selection import train_test_split
@@ -145,4 +149,5 @@ if uploaded_file is not None:
     plt.xticks(rotation=30)
     st.pyplot(plt.gcf())
     plt.clf()
+
 
